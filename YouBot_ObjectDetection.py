@@ -9,7 +9,7 @@ import time
 
 import cv2
 
-sys.path.append("..")
+# sys.path.append("..")
 from math import sqrt
 from utils import label_map_util
 
