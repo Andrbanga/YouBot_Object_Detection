@@ -1,20 +1,12 @@
 import socket
-
-YOUBOT_MODE = False
-
 import numpy as np
-import os
-import sys
-import tensorflow as tf
 import threading
 import time
-
 import cv2
-
-# sys.path.append("..")
 from math import sqrt
-from utils import label_map_util
+from Brain import TensoflowFaceDector
 
+YOUBOT_MODE = False
 print("Import done")
 
 cv2.namedWindow("Video stream", cv2.WINDOW_NORMAL)
@@ -53,71 +45,6 @@ initM = 170
 
 ret, img = vc.read()
 lock = threading.RLock()
-
-if True:  # move to different file
-    MODEL_NAME = 'ssd_mobilenet_v1_coco_11_06_2017'
-    MODEL_FILE = MODEL_NAME + '.tar.gz'
-    DOWNLOAD_BASE = '/object_detection/'
-
-    # Path to frozen detection graph. This is the actual model that is used for the object detection.
-    PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
-
-    # List of the strings that is used to add correct label for each box.
-    PATH_TO_LABELS = os.path.join('data', 'mscoco_label_map.pbtxt')
-    NUM_CLASSES = 90
-    label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
-    categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES,
-                                                                use_display_name=True)
-    category_index = label_map_util.create_category_index(categories)
-
-
-    class TensoflowFaceDector(object):
-        def __init__(self, PATH_TO_CKPT):
-            """Tensorflow detector
-            """
-
-            self.detection_graph = tf.Graph()
-            with self.detection_graph.as_default():
-                od_graph_def = tf.GraphDef()
-                with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
-                    serialized_graph = fid.read()
-                    od_graph_def.ParseFromString(serialized_graph)
-                    tf.import_graph_def(od_graph_def, name='')
-
-            with self.detection_graph.as_default():
-                config = tf.ConfigProto()
-                config.gpu_options.allow_growth = True
-                self.sess = tf.Session(graph=self.detection_graph, config=config)
-                self.windowNotSet = True
-
-        def run(self, image):
-            """image: bgr image
-            return (boxes, scores, classes, num_detections)
-            """
-
-            image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-            # the array based representation of the image will be used later in order to prepare the
-            # result image with boxes and labels on it.
-            # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-            image_np_expanded = np.expand_dims(image_np, axis=0)
-            image_tensor = self.detection_graph.get_tensor_by_name('image_tensor:0')
-            # Each box represents a part of the image where a particular object was detected.
-            boxes = self.detection_graph.get_tensor_by_name('detection_boxes:0')
-            # Each score represent how level of confidence for each of the objects.
-            # Score is shown on the result image, together with the class label.
-            scores = self.detection_graph.get_tensor_by_name('detection_scores:0')
-            classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
-            num_detections = self.detection_graph.get_tensor_by_name('num_detections:0')
-            # Actual detection.
-            start_time = time.time()
-            (boxes, scores, classes, num_detections) = self.sess.run(
-                [boxes, scores, classes, num_detections],
-                feed_dict={image_tensor: image_np_expanded})
-            elapsed_time = time.time() - start_time
-            # print('inference time cost: {}'.format(elapsed_time))
-
-            return (boxes, scores, classes, num_detections)
 
 
 class Kuka:
@@ -163,7 +90,7 @@ class Kuka:
                 break
 
 
-tDetector = TensoflowFaceDector(PATH_TO_CKPT)
+
 
 
 def drawRect(whpoint):
@@ -228,13 +155,15 @@ def videocap():
 
 
 def detection():
-    global lastPoint
-    global delta
-    global initX
-    global vecX
-    global vecY
-    global h
+    # todo: move to brain
+    # remove globals
+    # global lastPoint
+    # global delta
+    # global initX
+    # global h
+    # kuka = Kuka()
     box = [midpoint[0], midpoint[1], midpoint[0] + 1, midpoint[1] + 1]
+    tDetector = TensoflowFaceDector()
     while (ret == True):
         with lock:
             frame = img.copy()
@@ -269,8 +198,11 @@ def detection():
                         completionK = 1
                     else:
                         completionK = clamp(elapsedTimeSinceLastCommand / requiredTime, 0, 1)
-                    fixX = (lastPoint[0] - midpoint[0]) * completionK
-                    fixY = (lastPoint[1] - midpoint[1]) * completionK
+                    # fixX = (lastPoint[0] - midpoint[0]) * completionK
+                    # fixY = (lastPoint[1] - midpoint[1]) * completionK
+                    vecX = int((nearestPoint[0] - midpoint[0]) * ratio)
+                    vecY = int((nearestPoint[1] - midpoint[1]) * ratio)
+
                     # nearestPoint = (nearestPoint[0] - fixX // 2, nearestPoint[1] - fixY // 2)
                 # else:
                 #     #curX = clamp(lastPoint[0] + delta[0] / 2, 0, width / 2)
@@ -280,8 +212,7 @@ def detection():
                 #     delta = (nearestPoint[1] - lastPoint[0], nearestPoint[0] - lastPoint[1])
                 #     lastPoint = nearestPoint
 
-            vecX = int((nearestPoint[0] - midpoint[0]) * ratio)
-            vecY = int((nearestPoint[1] - midpoint[1]) * ratio)
+
             cv2.imshow("Video stream", frame)
 
         key = cv2.waitKey(20)
