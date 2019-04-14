@@ -1,3 +1,5 @@
+import socket
+
 YOUBOT_MODE = False
 
 import numpy as np
@@ -15,11 +17,10 @@ from utils import label_map_util
 
 print("Import done")
 
-# conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# conn.connect(('192.168.88.22', 7777))
-
 cv2.namedWindow("Video stream", cv2.WINDOW_NORMAL)
 if YOUBOT_MODE:
+    conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    conn.connect(('192.168.88.22', 7777))
     vc = cv2.VideoCapture(
         "http://192.168.88.22:8080/stream?topic=/camera/rgb/image_raw&width=640&height=480&quality=30")
 else:
@@ -50,25 +51,20 @@ initX = 168
 initY = 176
 initM = 170
 
-tracker = cv2.TrackerBoosting_create()
 ret, img = vc.read()
-connectionIsOpen = False
-
 lock = threading.RLock()
 
-MODEL_NAME = 'ssd_mobilenet_v1_coco_11_06_2017'
-MODEL_FILE = MODEL_NAME + '.tar.gz'
-DOWNLOAD_BASE = '/object_detection/'
-
-# Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
-
-# List of the strings that is used to add correct label for each box.
-PATH_TO_LABELS = os.path.join('data', 'mscoco_label_map.pbtxt')
-
-NUM_CLASSES = 90
-
 if True:  # move to different file
+    MODEL_NAME = 'ssd_mobilenet_v1_coco_11_06_2017'
+    MODEL_FILE = MODEL_NAME + '.tar.gz'
+    DOWNLOAD_BASE = '/object_detection/'
+
+    # Path to frozen detection graph. This is the actual model that is used for the object detection.
+    PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
+
+    # List of the strings that is used to add correct label for each box.
+    PATH_TO_LABELS = os.path.join('data', 'mscoco_label_map.pbtxt')
+    NUM_CLASSES = 90
     label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
     categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES,
                                                                 use_display_name=True)
@@ -125,8 +121,9 @@ if True:  # move to different file
 
 
 class Kuka:
-    def __init__(self, conn):
+    def __init__(self, conn, connectionIsOpen):
         self.conn = conn
+        self.connectionIsOpen = connectionIsOpen
 
     def send_data(self, data):  # отправка данных на робота
         self.conn.send(data)
@@ -134,7 +131,7 @@ class Kuka:
 
     def receive_data(self):  # Получение одометрии
         data = ''
-        while connectionIsOpen:
+        while self.connectionIsOpen:
             rcvd_data = self.conn.recv(1)
             if rcvd_data.decode() == '\n':
                 print(data)
@@ -142,14 +139,8 @@ class Kuka:
             else:
                 data += rcvd_data.decode()
 
-    def SendCommand(self):
-        global vecX
-        global vecY
-        global initX
-        global initY
-        global initM
-        # time.sleep(1) # FIX IT
-        connectionIsOpen = True
+    def SendCommand(self, vecX, vecY, initX, initY, initM):
+        self.connectionIsOpen = True
         # receive_thread = threading.Thread(target=receive_data)
         # receive_thread.start(
 
@@ -223,7 +214,7 @@ def videocap():
             # conn.shutdown(socket.SHUT_RDWR)
             # conn.close()
             break
-        # if key == 119:
+            # if key == 119:
         #     send_data(b'LUA_Base(0.1, 0, 0)^^^')
         # if key == 113:
         #     send_data(b'LUA_Base(0, 0, 0)^^^')
