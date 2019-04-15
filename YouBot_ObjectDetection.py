@@ -52,11 +52,6 @@ lock = threading.RLock()
 
 
 
-
-
-
-
-
 def drawRect(whpoint):
     ymin, xmin, ymax, xmax = whpoint
     mid = ((xmax + xmin) // 2, ymin + 30)
@@ -99,23 +94,25 @@ def videocap():
         with lock:
             img = img_.copy()
         key = cv2.waitKey(20)
-        if key == 27:  # exit on ESC
-            # connectionIsOpen = False
-            # send_data(b'#end#^^^')
-            # conn.shutdown(socket.SHUT_RDWR)
-            # conn.close()
+        if key == 27:  # exit on ESC]
+            if YOUBOT_MODE:
+                connectionIsOpen = False
+                kuka.send_data(b'#end#^^^')
+                conn.shutdown(socket.SHUT_RDWR)
+                conn.close()
             break
-            # if key == 119:
-        #     send_data(b'LUA_Base(0.1, 0, 0)^^^')
-        # if key == 113:
-        #     send_data(b'LUA_Base(0, 0, 0)^^^')
-        # if key == 91:
-        #     initM = 190
-        #     send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
-        # if key == 93:
-        #     initM = 170
-        #     send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
-        #     send_data(b'LUA_Gripper(0, 0.3)^^^')
+        if YOUBOT_MODE:
+            if key == 119:
+                kuka.send_data(b'LUA_Base(0.1, 0, 0)^^^')
+            if key == 113:
+                kuka.send_data(b'LUA_Base(0, 0, 0)^^^')
+            if key == 91:
+                initM = 190
+                kuka.send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
+            if key == 93:
+                initM = 170
+                kuka.send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
+                kuka.send_data(b'LUA_Gripper(0, 0.3)^^^')
 
 
 def detection():
@@ -124,8 +121,6 @@ def detection():
     # global lastPoint
     # global delta
     # global initX
-    # global h
-    # kuka = Kuka()
     box = [midpoint[0], midpoint[1], midpoint[0] + 1, midpoint[1] + 1]
     tDetector = TensoflowFaceDector()
     while (ret == True):
@@ -187,10 +182,11 @@ def detection():
 commander2 = threading.Thread(target=detection)
 commander2.start()
 
-# commander1 = threading.Thread(target=Kuka.SendCommand)
-# commander1.start()
+if YOUBOT_MODE:
+    commander1 = threading.Thread(target=Kuka.SendCommand, args=(vecX, vecY, initX, initY, initM, movementSpeed))
+    commander1.start()
 
-# send_data(b'LUA_ManipDeg(0, 168, 10, -83, 177, 170)^^^') # манипулятор в изначально положение
+    kuka.send_data(b'LUA_ManipDeg(0, 168, 10, -83, 177, 170)^^^') # манипулятор в изначально положение
 
 videocap()
 
