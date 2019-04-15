@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
 import socket
 import numpy as np
+import os
 import threading
 import time
 import cv2
@@ -10,10 +12,23 @@ from Kuka_Control import Kuka
 YOUBOT_MODE = False
 print("Import done")
 
+
+
+Youbot_hostname = "192.168.88.22"
+Youbot_host = os.system("ping -n 1 " + Youbot_hostname)
+
+if Youbot_host == 0:
+    YOUBOT_MODE = True
+    print("YouBot Mode")
+else:
+    YOUBOT_MODE = False
+    print("Debug Mode")
+
 cv2.namedWindow("Video stream", cv2.WINDOW_NORMAL)
+
 if YOUBOT_MODE:
     conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    conn.connect(('192.168.88.22', 7777))
+    conn.connect((Youbot_hostname, 7777))
     connectionIsOpen = True
     kuka = Kuka(conn, connectionIsOpen)
     vc = cv2.VideoCapture(
@@ -141,7 +156,6 @@ def detection():
 
                 if box is not None:
                     # points = box
-                    # ok = tracker.init(frame, (points[1], points[0], points[3], points[2]))
                     nearestPoint = get_nearest_point(box)
                     # nearestPoint = points
                     drawRect(nearestPoint)
