@@ -3,12 +3,10 @@ from math import sqrt
 import cv2
 
 
-
-
 class Kuka:
 
-    def clamp(value, minval, maxval):
-        return sorted((value, minval, maxval))[1]
+    def clamp(self, value, minval, maxval):
+        return self.sorted((value, minval, maxval))[1]
 
     def __init__(self, conn, connectionIsOpen):
         self.conn = conn

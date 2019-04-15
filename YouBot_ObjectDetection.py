@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# master test
 import socket
 import numpy as np
 import os
@@ -132,8 +131,7 @@ def videocap():
 
 
 def detection():
-    # todo: move to brain
-    # remove globals
+    # todo: move to brain and remove globals
     # global lastPoint
     # global delta
     # global initX
