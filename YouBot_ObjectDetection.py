@@ -5,6 +5,7 @@ import time
 import cv2
 from math import sqrt
 from Brain import TensoflowFaceDector
+from Kuka_Control import Kuka
 
 YOUBOT_MODE = False
 print("Import done")
@@ -13,6 +14,8 @@ cv2.namedWindow("Video stream", cv2.WINDOW_NORMAL)
 if YOUBOT_MODE:
     conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     conn.connect(('192.168.88.22', 7777))
+    connectionIsOpen = True
+    kuka = Kuka(conn, connectionIsOpen)
     vc = cv2.VideoCapture(
         "http://192.168.88.22:8080/stream?topic=/camera/rgb/image_raw&width=640&height=480&quality=30")
 else:
@@ -43,51 +46,12 @@ initX = 168
 initY = 176
 initM = 170
 
+
 ret, img = vc.read()
 lock = threading.RLock()
 
 
-class Kuka:
-    def __init__(self, conn, connectionIsOpen):
-        self.conn = conn
-        self.connectionIsOpen = connectionIsOpen
 
-    def send_data(self, data):  # отправка данных на робота
-        self.conn.send(data)
-        print('Data sent: ' + data.decode())
-
-    def receive_data(self):  # Получение одометрии
-        data = ''
-        while self.connectionIsOpen:
-            rcvd_data = self.conn.recv(1)
-            if rcvd_data.decode() == '\n':
-                print(data)
-                data = ''
-            else:
-                data += rcvd_data.decode()
-
-    def SendCommand(self, vecX, vecY, initX, initY, initM):
-        self.connectionIsOpen = True
-        # receive_thread = threading.Thread(target=receive_data)
-        # receive_thread.start(
-
-        while True:
-
-            print("%d, %d" % (vecX, vecY))
-            if (vecX > 5 or vecX < -5):
-                requiredTimeLocal = sqrt(vecX ** 2 + vecY ** 2) * movementSpeed
-                initX = initX + vecX
-                initX = clamp(initX, 80, 256)
-                initY = initY + vecY
-                initY = clamp(initY, 10, 177)
-                self.send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
-                print(b'LUA_ManipDeg(0, %d, 61, -139, %d, %d)^^^' % (initX, initY, initM))
-
-                time.sleep(requiredTimeLocal)
-
-            key = cv2.waitKey(20)
-            if key == 27:  # exit on ESC
-                break
 
 
 
@@ -223,11 +187,8 @@ def detection():
 commander2 = threading.Thread(target=detection)
 commander2.start()
 
-# commander1 = threading.Thread(target=SendCommand)
+# commander1 = threading.Thread(target=Kuka.SendCommand)
 # commander1.start()
-#
-# commander3 = threading.Thread(target=BaseControl)
-# commander3.start()
 
 # send_data(b'LUA_ManipDeg(0, 168, 10, -83, 177, 170)^^^') # манипулятор в изначально положение
 
