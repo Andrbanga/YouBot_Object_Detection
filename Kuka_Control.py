@@ -3,10 +3,20 @@ from math import sqrt
 import cv2
 
 
+
 class Kuka:
 
     def clamp(self, value, minval, maxval):
         return self.sorted((value, minval, maxval))[1]
+
+    def signum(self, val):
+        if val < 0:
+            return -1
+        if val > 0:
+            return 1
+        if val == 0:
+            return 0
+
 
     def __init__(self, conn, connectionIsOpen):
         self.conn = conn
@@ -34,11 +44,11 @@ class Kuka:
         while True:
 
             print("%d, %d" % (vecX, vecY))
-            if (vecX > 5 or vecX < -5):
+            if (sqrt(vecX) + sqrt(vecY) < 16):
                 requiredTimeLocal = sqrt(vecX ** 2 + vecY ** 2) * movementSpeed
-                initX = initX + vecX
+                initX = initX + self.signum(vecX)
                 initX = self.clamp(initX, 80, 256)
-                initY = initY + vecY
+                initY = initY + self.signum(vecY)
                 initY = self.clamp(initY, 10, 177)
                 self.send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
                 print(b'LUA_ManipDeg(0, %d, 61, -139, %d, %d)^^^' % (initX, initY, initM))

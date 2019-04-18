@@ -42,7 +42,7 @@ midpoint = (width // 2, height // 2)
 
 vc.set(3, width)
 vc.set(4, height)
-vc.set(cv2.CAP_PROP_EXPOSURE, -3)  # old: 5
+vc.set(cv2.CAP_PROP_EXPOSURE, -6)  # old: 5
 
 FOVx = 58  # degree
 FOVy = 45
@@ -135,7 +135,7 @@ def detection():
     # global lastPoint
     # global delta
     # global initX
-    box = [midpoint[0], midpoint[1], midpoint[0] + 1, midpoint[1] + 1]
+    # box = [midpoint[0], midpoint[1], midpoint[0] + 1, midpoint[1] + 1]
     tDetector = TensoflowFaceDector()
     while (ret == True):
         with lock:
@@ -148,7 +148,7 @@ def detection():
         max_boxes_to_draw = boxes.shape[0]
         nearestPoint = midpoint
         for i in range(min(max_boxes_to_draw, boxes.shape[0])):
-            if scores is None or scores[i] > .7 and classes[i] == 1:
+            if scores is None or scores[i] > .5 and classes[i] == 1:
                 box = tuple(boxes[i].tolist())
                 box = (box[0] * height, box[1] * width, box[2] * height, box[3] * width)
                 box = tuple(map(int, box))
@@ -174,6 +174,7 @@ def detection():
                     # fixY = (lastPoint[1] - midpoint[1]) * completionK
                     vecX = int((nearestPoint[0] - midpoint[0]) * ratio)
                     vecY = int((nearestPoint[1] - midpoint[1]) * ratio)
+                    print(vecY, vecY, scores[i])
 
                     # nearestPoint = (nearestPoint[0] - fixX // 2, nearestPoint[1] - fixY // 2)
                 # else:
@@ -185,7 +186,7 @@ def detection():
                 #     lastPoint = nearestPoint
 
 
-            cv2.imshow("Video stream", frame)
+        cv2.imshow("Video stream", frame)
 
         key = cv2.waitKey(20)
         if key == 27:  # exit on ESC
