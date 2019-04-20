@@ -7,7 +7,7 @@ import time
 import cv2
 from math import sqrt
 from Brain import TensoflowFaceDector
-from Kuka_Control import Kuka
+
 
 YOUBOT_MODE = False
 print("Import done")
@@ -30,7 +30,6 @@ if YOUBOT_MODE:
     conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     conn.connect((Youbot_hostname, 7777))
     connectionIsOpen = True
-    kuka = Kuka(conn, connectionIsOpen)
     vc = cv2.VideoCapture(
         "http://192.168.88.22:8080/stream?topic=/camera/rgb/image_raw&width=640&height=480&quality=30")
 else:
@@ -98,6 +97,57 @@ def clamp(value, minval, maxval):
 def round_tuple(items):  # sorry, I know I must use normal vectors
     return tuple(map(int, map(round, items)))
 
+def signum(val):
+    if val < 0:
+        return -1
+    if val > 0:
+        return 1
+    if val == 0:
+        return 0
+
+def send_data(data):  # отправка данных на робота
+    conn.send(data)
+    print('Data sent: ' + data.decode())
+
+def receive_data():  # Получение одометрии
+    data = ''
+    while connectionIsOpen:
+        rcvd_data = conn.recv(1)
+        if rcvd_data.decode() == '\n':
+            print(data)
+            data = ''
+        else:
+            data += rcvd_data.decode()
+
+def SendCommand():
+    global vecY
+    global vecX
+    global initY
+    global initX
+    global initM
+    connectionIsOpen = True
+    # receive_thread = threading.Thread(target=receive_data)
+    # receive_thread.start(
+
+    while True:
+
+        # print("%d, %d" % (vecX, vecY))
+        if (vecX*vecX + vecY*vecY > 16):
+            # requiredTimeLocal = sqrt(vecX ** 2 + vecY ** 2) * movementSpeed
+            requiredTimeLocal = 0.05
+            initX = initX + signum(vecX)
+            initX = clamp(initX, 80, 256)
+            initY = initY + signum(vecY)
+            initY = clamp(initY, 10, 177)
+            send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
+            print(b'LUA_ManipDeg(0, %d, 61, -139, %d, %d)^^^' % (initX, initY, initM))
+
+            time.sleep(requiredTimeLocal)
+
+        key = cv2.waitKey(20)
+        if key == 27:  # exit on ESC
+            break
+
 
 def videocap():
     global img
@@ -112,22 +162,22 @@ def videocap():
         if key == 27:  # exit on ESC]
             if YOUBOT_MODE:
                 connectionIsOpen = False
-                kuka.send_data(b'#end#^^^')
+                send_data(b'#end#^^^')
                 conn.shutdown(socket.SHUT_RDWR)
                 conn.close()
             break
         if YOUBOT_MODE:
             if key == 119:
-                kuka.send_data(b'LUA_Base(0.1, 0, 0)^^^')
+                send_data(b'LUA_Base(0.1, 0, 0)^^^')
             if key == 113:
-                kuka.send_data(b'LUA_Base(0, 0, 0)^^^')
+                send_data(b'LUA_Base(0, 0, 0)^^^')
             if key == 91:
                 initM = 190
-                kuka.send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
+                send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
             if key == 93:
                 initM = 170
-                kuka.send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
-                kuka.send_data(b'LUA_Gripper(0, 0.3)^^^')
+                send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
+                send_data(b'LUA_Gripper(0, 0.3)^^^')
 
 
 def detection():
@@ -135,6 +185,8 @@ def detection():
     # global lastPoint
     # global delta
     # global initX
+    global vecX
+    global vecY
     # box = [midpoint[0], midpoint[1], midpoint[0] + 1, midpoint[1] + 1]
     tDetector = TensoflowFaceDector()
     while (ret == True):
@@ -174,7 +226,7 @@ def detection():
                     # fixY = (lastPoint[1] - midpoint[1]) * completionK
                     vecX = int((nearestPoint[0] - midpoint[0]) * ratio)
                     vecY = int((nearestPoint[1] - midpoint[1]) * ratio)
-                    print(vecY, vecY, scores[i])
+
 
                     # nearestPoint = (nearestPoint[0] - fixX // 2, nearestPoint[1] - fixY // 2)
                 # else:
@@ -197,10 +249,10 @@ commander2 = threading.Thread(target=detection)
 commander2.start()
 
 if YOUBOT_MODE:
-    commander1 = threading.Thread(target=Kuka.SendCommand, args=(vecX, vecY, initX, initY, initM, movementSpeed))
+    commander1 = threading.Thread(target=SendCommand)
     commander1.start()
 
-    kuka.send_data(b'LUA_ManipDeg(0, 168, 10, -83, 177, 170)^^^') # манипулятор в изначально положение
+    send_data(b'LUA_ManipDeg(0, 168, 10, -83, 177, 170)^^^') # манипулятор в изначально положение
 
 videocap()
 
