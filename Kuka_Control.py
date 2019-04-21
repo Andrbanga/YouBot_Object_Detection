@@ -4,17 +4,12 @@ import cv2
 import threading
 
 
-
 class Kuka(threading.Thread):
 
     def clamp(self, value, minval, maxval):
         return self.sorted((value, minval, maxval))[1]
 
-
-
-
     def __init__(self, conn, connectionIsOpen):
+        super().__init__()
         self.conn = conn
         self.connectionIsOpen = connectionIsOpen
-
-

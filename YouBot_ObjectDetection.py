@@ -14,10 +14,10 @@ print("Import done")
 
 
 
-Youbot_hostname = "192.168.88.22"
-Youbot_host = os.system("ping -n 1 " + Youbot_hostname)
+Youbot_hostname = "192.168.88.22"  #todo: const
+Youbot_present = os.system("ping -n 1 " + Youbot_hostname)
 
-if Youbot_host == 0:
+if Youbot_present == 0:
     YOUBOT_MODE = True
     print("YouBot Mode")
 else:
@@ -31,7 +31,8 @@ if YOUBOT_MODE:
     conn.connect((Youbot_hostname, 7777))
     connectionIsOpen = True
     vc = cv2.VideoCapture(
-        "http://192.168.88.22:8080/stream?topic=/camera/rgb/image_raw&width=640&height=480&quality=30")
+        "http://%s:8080/stream?topic=/camera/rgb/image_raw&width=640&height=480&quality=30"
+    % Youbot_hostname)
 else:
     vc = cv2.VideoCapture(0)
 
@@ -65,7 +66,6 @@ ret, img = vc.read()
 lock = threading.RLock()
 
 
-
 def drawRect(whpoint):
     ymin, xmin, ymax, xmax = whpoint
     mid = ((xmax + xmin) // 2, ymin + 30)
@@ -97,13 +97,14 @@ def clamp(value, minval, maxval):
 def round_tuple(items):  # sorry, I know I must use normal vectors
     return tuple(map(int, map(round, items)))
 
-def signum(val):
-    if val < 0:
-        return -1
-    if val > 0:
-        return 1
-    if val == 0:
-        return 0
+def sign(val):
+    return -1 if val < 0 else 1 if val > 0 else 0
+    # if val < 0:
+    #     return -1
+    # if val > 0:
+    #     return 1
+    # if val == 0:
+    #     return 0
 
 def send_data(data):  # отправка данных на робота
     conn.send(data)
@@ -132,12 +133,12 @@ def SendCommand():
     while True:
 
         # print("%d, %d" % (vecX, vecY))
-        if (vecX*vecX + vecY*vecY > 16):
+        if (vecX ** 2 + vecY ** 2 > 16):
             # requiredTimeLocal = sqrt(vecX ** 2 + vecY ** 2) * movementSpeed
             requiredTimeLocal = 0.05
-            initX = initX + signum(vecX)
+            initX = initX + sign(vecX)
             initX = clamp(initX, 80, 256)
-            initY = initY + signum(vecY)
+            initY = initY + sign(vecY)
             initY = clamp(initY, 10, 177)
             send_data(b'LUA_ManipDeg(0, %d, 10, -83, %d, %d)^^^' % (initX, initY, initM))
             print(b'LUA_ManipDeg(0, %d, 61, -139, %d, %d)^^^' % (initX, initY, initM))
